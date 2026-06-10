@@ -279,6 +279,51 @@ class AiProviderSettingsTests(TestCase):
         self.assertEqual(request_body["model"], "relay-chat")
 
     @patch("core.views.urllib_request.urlopen")
+    def test_chat_accepts_ai_provider_base_without_scheme(self, mocked_urlopen):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return json.dumps({"choices": [{"message": {"content": "configured reply"}}]}).encode("utf-8")
+
+        mocked_urlopen.return_value = FakeResponse()
+        app_settings = AppSetting.objects.get(id=1)
+        app_settings.ai_relay_base_url = "relay.example.com/openai"
+        app_settings.ai_root_api_key = "root-key"
+        app_settings.save()
+
+        response = self.client.post(
+            "/api/chat",
+            data=json.dumps({"message": "hello", "mode": "chat"}),
+            content_type="application/json",
+            **self.user_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://relay.example.com/openai/v1/chat/completions")
+
+    def test_chat_returns_provider_error_for_invalid_ai_provider_base(self):
+        app_settings = AppSetting.objects.get(id=1)
+        app_settings.ai_relay_base_url = "ftp://relay.example.com/openai"
+        app_settings.ai_root_api_key = "root-key"
+        app_settings.save()
+
+        response = self.client.post(
+            "/api/chat",
+            data=json.dumps({"message": "hello", "mode": "chat"}),
+            content_type="application/json",
+            **self.user_headers,
+        )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["error"], "AI_PROVIDER_REQUEST_FAILED")
+
+    @patch("core.views.urllib_request.urlopen")
     def test_chat_sends_conversation_history_to_provider(self, mocked_urlopen):
         class FakeResponse:
             def __enter__(self):

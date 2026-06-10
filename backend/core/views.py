@@ -8,6 +8,7 @@ import traceback
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib import error as urllib_error
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from django.conf import settings as django_settings
@@ -737,7 +738,10 @@ def ensure_ai_provider_configured(api_base, api_key):
 
 
 def post_openai_compatible(api_base, path, api_key, payload):
-    url = build_openai_compatible_url(api_base, path)
+    try:
+        url = build_openai_compatible_url(api_base, path)
+    except ValueError as error:
+        raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", f"AI provider request failed: {error}")
     body = json.dumps(payload).encode("utf-8")
     request = urllib_request.Request(
         url,
@@ -756,12 +760,15 @@ def post_openai_compatible(api_base, path, api_key, payload):
         raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", f"AI provider request failed: HTTP {error.code} {detail}".strip())
     except json.JSONDecodeError:
         raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", "AI provider returned invalid JSON")
-    except (urllib_error.URLError, TimeoutError) as error:
+    except (urllib_error.URLError, TimeoutError, ValueError, OSError) as error:
         raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", f"AI provider request failed: {format_network_error(error)}")
 
 
 def post_openai_compatible_multipart(api_base, path, api_key, fields, file_items):
-    url = build_openai_compatible_url(api_base, path)
+    try:
+        url = build_openai_compatible_url(api_base, path)
+    except ValueError as error:
+        raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", f"AI provider multipart request failed: {error}")
     boundary = f"----ai-shell-{secrets.token_hex(12)}"
     chunks = []
     for name, value in fields.items():
@@ -804,15 +811,28 @@ def post_openai_compatible_multipart(api_base, path, api_key, fields, file_items
         raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", f"AI provider multipart request failed: HTTP {error.code} {detail}".strip())
     except json.JSONDecodeError:
         raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", "AI provider returned invalid JSON")
-    except (urllib_error.URLError, TimeoutError) as error:
+    except (urllib_error.URLError, TimeoutError, ValueError, OSError) as error:
         raise ApiError(502, "AI_PROVIDER_REQUEST_FAILED", f"AI provider multipart request failed: {format_network_error(error)}")
 
 
 def build_openai_compatible_url(api_base, path):
-    api_base = api_base.rstrip("/")
+    api_base = normalize_ai_api_base(api_base)
     if api_base.endswith("/v1") and path.startswith("/v1/"):
         return f"{api_base}{path[3:]}"
     return f"{api_base}{path}"
+
+
+def normalize_ai_api_base(api_base):
+    api_base = str(api_base or "").strip().rstrip("/")
+    if not api_base:
+        raise ValueError("AI API base URL is empty")
+    parsed = urllib_parse.urlparse(api_base)
+    if not parsed.scheme:
+        api_base = f"https://{api_base}"
+        parsed = urllib_parse.urlparse(api_base)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("AI API base URL must be a valid http(s) URL")
+    return api_base
 
 
 def format_ai_provider_error(raw_body):
