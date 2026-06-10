@@ -11,7 +11,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate && gunicorn ai_backend.wsgi:application
+    startCommand: python manage.py migrate && gunicorn ai_backend.wsgi:application --timeout 240 --graceful-timeout 240
     envVars:
       - key: DATABASE_URL
         fromDatabase:
