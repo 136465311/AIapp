@@ -18,9 +18,20 @@ This project has one Django backend and two Vite/Vue frontends.
    - `FRONTEND_USER_URL`
    - Alipay variables if payment is enabled
 
-## Frontends on Vercel
+## Frontends on Render
 
-Create two Vercel projects from this same GitHub repository.
+The Blueprint also creates two static sites:
+
+- `aiapp-user`
+- `aiapp-admin`
+
+Both use `VITE_API_BASE_URL=https://aiapp-backend.onrender.com` during the build.
+If you change the backend service URL or add a custom backend domain, update this
+value in `render.yaml` and sync the Blueprint again.
+
+## Optional Frontends on Vercel
+
+You can also create two Vercel projects from this same GitHub repository.
 
 ### User frontend
 

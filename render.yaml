@@ -25,3 +25,27 @@ services:
         value: "*"
       - key: PYTHON_VERSION
         value: "3.11.9"
+  - type: web
+    name: aiapp-user
+    runtime: static
+    buildCommand: cd frontend-user && npm install && npm run build
+    staticPublishPath: frontend-user/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://aiapp-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+  - type: web
+    name: aiapp-admin
+    runtime: static
+    buildCommand: cd frontend-admin && npm install && npm run build
+    staticPublishPath: frontend-admin/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://aiapp-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
