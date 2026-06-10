@@ -25,6 +25,14 @@ services:
         value: "*"
       - key: PYTHON_VERSION
         value: "3.11.9"
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: SITE_BASE_URL
+        value: https://aiapp-backend.onrender.com
+      - key: FRONTEND_USER_URL
+        value: https://aiapp-user.onrender.com
   - type: web
     name: aiapp-user
     runtime: static
