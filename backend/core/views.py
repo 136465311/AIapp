@@ -172,7 +172,7 @@ def chat(request):
     user = require_user(request)
     body, uploaded_images = read_chat_body(request)
     prompt = str(body.get("message") or "").strip()
-    mode = "image" if body.get("mode") == "image" else "chat"
+    mode = resolve_request_mode(body.get("mode"))
     if not prompt:
         raise ApiError(400, "EMPTY_MESSAGE", "Please enter a message")
 
@@ -507,6 +507,12 @@ def create_ai_message(conversation, mode, prompt, app_settings, reference_images
         )
     reply = call_openai_compatible_chat(conversation, app_settings)
     return Message.objects.create(conversation=conversation, role="assistant", type="text", content=reply)
+
+
+def resolve_request_mode(raw_mode):
+    if os.environ.get("ALLOW_CHAT_MODE", "0") == "1" and raw_mode == "chat":
+        return "chat"
+    return "image"
 
 
 def call_openai_compatible_chat(conversation, app_settings):

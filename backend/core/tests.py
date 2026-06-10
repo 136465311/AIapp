@@ -1,4 +1,5 @@
 import json
+import os
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -162,6 +163,8 @@ class AdminCreditsLimitTests(TestCase):
 
 class AiProviderSettingsTests(TestCase):
     def setUp(self):
+        self.previous_allow_chat_mode = os.environ.get("ALLOW_CHAT_MODE")
+        os.environ["ALLOW_CHAT_MODE"] = "1"
         AppSetting.objects.create(
             id=1,
             total_available_credits=Decimal("1000.00"),
@@ -187,6 +190,12 @@ class AiProviderSettingsTests(TestCase):
             content_type="application/json",
         )
         self.user_headers = {"HTTP_AUTHORIZATION": f"Bearer {user_login.json()['token']}"}
+
+    def tearDown(self):
+        if self.previous_allow_chat_mode is None:
+            os.environ.pop("ALLOW_CHAT_MODE", None)
+        else:
+            os.environ["ALLOW_CHAT_MODE"] = self.previous_allow_chat_mode
 
     def test_admin_can_save_ai_provider_settings(self):
         response = self.client.post(
@@ -352,6 +361,39 @@ class AiProviderSettingsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         request_body = json.loads(mocked_urlopen.call_args.args[0].data.decode("utf-8"))
         self.assertEqual(request_body["model"], "gpt-4o-mini")
+
+    @patch("core.views.urllib_request.urlopen")
+    def test_chat_endpoint_defaults_to_image_mode_when_chat_mode_disabled(self, mocked_urlopen):
+        os.environ["ALLOW_CHAT_MODE"] = "0"
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return json.dumps({"data": [{"b64_json": "aW1hZ2U="}]}).encode("utf-8")
+
+        mocked_urlopen.return_value = FakeResponse()
+        app_settings = AppSetting.objects.get(id=1)
+        app_settings.ai_relay_base_url = "https://relay.example.com/openai"
+        app_settings.ai_root_api_key = "root-key"
+        app_settings.image_model = "gpt-image-2"
+        app_settings.save()
+
+        response = self.client.post(
+            "/api/chat",
+            data=json.dumps({"message": "hello", "mode": "chat"}),
+            content_type="application/json",
+            **self.user_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["messages"][1]["type"], "image")
+        request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://relay.example.com/openai/v1/images/generations")
 
     @patch("core.views.urllib_request.urlopen")
     def test_chat_sends_conversation_history_to_provider(self, mocked_urlopen):
