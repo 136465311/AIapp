@@ -1,0 +1,2 @@
+Django==5.0.7
+python-alipay-sdk==3.4.0
