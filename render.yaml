@@ -1,7 +1,6 @@
 databases:
   - name: aiapp-db
     plan: free
-    diskSizeGB: 1
     databaseName: aiapp
     user: aiapp
 
