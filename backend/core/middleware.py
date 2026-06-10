@@ -1,4 +1,6 @@
-from django.http import HttpResponse
+import traceback
+
+from django.http import HttpResponse, JsonResponse
 
 
 class SimpleCorsMiddleware:
@@ -9,7 +11,14 @@ class SimpleCorsMiddleware:
         if request.method == "OPTIONS":
             response = HttpResponse()
         else:
-            response = self.get_response(request)
+            try:
+                response = self.get_response(request)
+            except Exception as error:
+                traceback.print_exc()
+                response = JsonResponse(
+                    {"error": "SERVER_ERROR", "message": "Service is temporarily unavailable"},
+                    status=500,
+                )
         response["Access-Control-Allow-Origin"] = "*"
         response["Access-Control-Allow-Headers"] = "content-type, authorization"
         response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"

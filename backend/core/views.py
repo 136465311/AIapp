@@ -47,7 +47,7 @@ def endpoint(view_func):
 @endpoint
 def health(request):
     require_method(request, "GET")
-    return JsonResponse({"status": "ok"})
+    return JsonResponse({"status": "ok", "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})
 
 
 @endpoint

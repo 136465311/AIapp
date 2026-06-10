@@ -15,7 +15,8 @@ class HealthTests(TestCase):
         response = self.client.get("/api/health")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"status": "ok"})
+        self.assertEqual(response.json()["status"], "ok")
+        self.assertIn("commit", response.json())
 
 
 class AuthReviewFlowTests(TestCase):
