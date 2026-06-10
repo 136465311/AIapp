@@ -514,7 +514,7 @@ def call_openai_compatible_chat(conversation, app_settings):
     api_base = get_ai_api_base(app_settings)
     ensure_ai_provider_configured(api_base, api_key)
     payload = {
-        "model": app_settings.chat_model or "gpt-4o-mini",
+        "model": get_chat_model(app_settings),
         "messages": build_chat_messages(conversation),
     }
     data = post_openai_compatible(api_base, "/v1/chat/completions", api_key, payload)
@@ -557,6 +557,18 @@ def call_openai_compatible_image(prompt, app_settings, reference_images=None):
     except (KeyError, IndexError, TypeError, AttributeError):
         pass
     raise ApiError(502, "AI_PROVIDER_BAD_RESPONSE", "AI provider returned an invalid image response")
+
+
+def get_chat_model(app_settings):
+    model = str(app_settings.chat_model or "").strip()
+    if is_image_only_model(model):
+        return os.environ.get("DEFAULT_CHAT_MODEL", "gpt-4o-mini")
+    return model or os.environ.get("DEFAULT_CHAT_MODEL", "gpt-4o-mini")
+
+
+def is_image_only_model(model):
+    normalized = str(model or "").strip().lower()
+    return normalized.startswith("gpt-image") or normalized in {"dall-e-2", "dall-e-3"}
 
 
 def build_chat_messages(conversation):
