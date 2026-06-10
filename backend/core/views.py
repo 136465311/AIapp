@@ -44,6 +44,12 @@ def endpoint(view_func):
 
 
 @endpoint
+def health(request):
+    require_method(request, "GET")
+    return JsonResponse({"status": "ok"})
+
+
+@endpoint
 def register(request):
     require_method(request, "POST")
     body = read_body(request)

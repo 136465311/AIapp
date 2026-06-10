@@ -9,6 +9,14 @@ from .models import AiUser, AppSetting, Conversation, Message, Recharge
 from .views import hash_password
 
 
+class HealthTests(TestCase):
+    def test_health_endpoint_returns_ok(self):
+        response = self.client.get("/api/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+
+
 class AuthReviewFlowTests(TestCase):
     def setUp(self):
         AppSetting.objects.create(
