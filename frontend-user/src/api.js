@@ -1,4 +1,5 @@
 const TOKEN_KEY = "ai_shell_user_token";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || "";
@@ -13,7 +14,7 @@ export async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;
   const headers = { ...(isFormData ? {} : { "content-type": "application/json" }), ...(options.headers || {}) };
   if (options.token) headers.authorization = `Bearer ${options.token}`;
-  const response = await fetch(path, {
+  const response = await fetch(buildApiUrl(path), {
     method: options.method || "GET",
     headers,
     body: options.body ? (isFormData ? options.body : JSON.stringify(options.body)) : undefined
@@ -26,6 +27,11 @@ export async function api(path, options = {}) {
     throw error;
   }
   return data;
+}
+
+function buildApiUrl(path) {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function formatApiMessage(message) {

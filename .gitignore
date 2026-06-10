@@ -1,5 +1,6 @@
 node_modules/
 dist/
+staticfiles/
 __pycache__/
 *.py[cod]
 *.log
